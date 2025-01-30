@@ -4,40 +4,61 @@ import { Button, Canvas, SelectField } from 'datocms-react-ui';
 import { useState } from 'react';
 import styles from './styles.module.css';
 
-type Props = {
-  ctx: RenderConfigScreenCtx;
-};
-
+/**
+ * Represents a mapping from locale strings to generic content.
+ * Each key in this interface is a locale, and the value can be any data for that locale.
+ */
 interface LocalizedField {
   [locale: string]: any;
 }
 
+/**
+ * Describes a structure that maps field keys to their localized fields.
+ * This is used to accumulate updates for each record based on locale.
+ */
 interface Updates {
   [fieldKey: string]: LocalizedField;
 }
 
+/**
+ * Structure describing a single progress update event with details:
+ * - message: The textual description of the progress event
+ * - type: The type of update (info, success, error)
+ * - timestamp: A numeric timestamp to uniquely identify each progress event
+ */
 interface ProgressUpdate {
   message: string;
   type: 'info' | 'success' | 'error';
   timestamp: number;
 }
 
+/**
+ * Recursively removes IDs from nested 'block' and 'item' objects.
+ * This is used to ensure we don't overwrite or conflict with existing IDs
+ * when duplicating content from one locale to another.
+ *
+ * @param obj - The object or array in which block and item IDs might need to be removed.
+ * @returns The same structure but with block/item IDs removed.
+ */
 function removeBlockItemIds(obj: any) {
   if (Array.isArray(obj)) {
+    // If it's an array, iterate through each element and remove IDs recursively
     for (let i = 0; i < obj.length; i++) {
       removeBlockItemIds(obj[i]);
     }
   } else if (obj && typeof obj === 'object') {
-    // If this is a "block" type object with an "item" that has an "id", remove the item's id
+    // If it's an object, check for block- or item-type structures
     if (obj.type === 'block' && obj.item && obj.item.id) {
+      // Remove the ID from the 'block' item
       delete obj.item.id;
     }
 
-    // If this is a "type": "item" object (not "item_type"), remove that object's id
     if (obj.type === 'item' && obj.id) {
+      // Remove the ID from the 'item' object
       delete obj.id;
     }
 
+    // Recursively check all nested fields
     for (const key in obj) {
       removeBlockItemIds(obj[key]);
     }
@@ -45,6 +66,15 @@ function removeBlockItemIds(obj: any) {
   return obj;
 }
 
+/**
+ * A React component that displays progress updates during the duplication process.
+ * It shows a heading indicating which locales are being processed and renders
+ * a list of progress update messages.
+ *
+ * @param updates - An array of progress update objects to be displayed.
+ * @param sourceLocale - The locale from which content is being duplicated.
+ * @param targetLocale - The locale to which content is being duplicated.
+ */
 function ProgressView({
   updates,
   sourceLocale,
@@ -73,17 +103,32 @@ function ProgressView({
   );
 }
 
+/**
+ * Main function to duplicate locale content from a source locale to a target locale.
+ * It iterates through all content models in DatoCMS (excluding modular blocks),
+ * finds records for each model, and then copies the source locale field values
+ * into the target locale fields. It also includes progress messages for each step.
+ *
+ * @param ctx - DatoCMS plugin context used to access the CMA client.
+ * @param sourceLocale - The locale to copy content from.
+ * @param targetLocale - The locale to copy content into.
+ * @param onProgress - A callback function invoked to report progress updates.
+ */
 async function duplicateLocaleContent(
   ctx: RenderConfigScreenCtx,
   sourceLocale: string,
   targetLocale: string,
   onProgress: (update: ProgressUpdate) => void
 ) {
+  // Build the CMA client with the current user's access token
   const client = buildClient({
     apiToken: ctx.currentUserAccessToken!,
   });
+
   try {
+    // Retrieve all item types (models)
     const allModels = await client.itemTypes.list();
+    // Filter out modular block item types
     const models = allModels.filter((model) => !model.modular_block);
 
     onProgress({
@@ -92,6 +137,7 @@ async function duplicateLocaleContent(
       timestamp: Date.now(),
     });
 
+    // Iterate over each content model
     for (const model of models) {
       onProgress({
         message: `Processing model: ${model.name}`,
@@ -100,6 +146,7 @@ async function duplicateLocaleContent(
       });
 
       try {
+        // Iterate over all items of the current model in a paginated manner
         for await (const record of client.items.rawListPagedIterator({
           filter: {
             type: model.api_key,
@@ -107,11 +154,14 @@ async function duplicateLocaleContent(
           nested: true,
         })) {
           try {
+            // Initialize an empty object to accumulate updates
             let updates: Updates = {};
 
+            // Loop over each attribute/field in the record
             for (const [fieldKey, fieldValue] of Object.entries(
               record.attributes
             )) {
+              // Skip certain attributes that are not relevant for duplication
               if (
                 fieldKey.startsWith('_') ||
                 [
@@ -127,19 +177,26 @@ async function duplicateLocaleContent(
                 continue;
               }
 
+              // Check if the field is localized (has the sourceLocale key)
               if (
                 fieldValue &&
                 typeof fieldValue === 'object' &&
                 Object.keys(fieldValue as object).includes(sourceLocale)
               ) {
+                // Clone the localized field object
                 updates[fieldKey] = { ...(fieldValue as LocalizedField) };
+
+                // Overwrite target locale with the source locale content
                 updates[fieldKey][targetLocale] = (
                   fieldValue as LocalizedField
                 )[sourceLocale];
+
+                // Remove block/item IDs to avoid collisions
                 updates = removeBlockItemIds(updates);
               }
             }
 
+            // If there are any updates for this record, apply them
             if (Object.keys(updates).length > 0) {
               try {
                 await client.items.update(record.id, updates);
@@ -158,6 +215,7 @@ async function duplicateLocaleContent(
               }
             }
           } catch (error) {
+            // Continue to the next record if an error occurs
             continue;
           }
         }
@@ -167,18 +225,22 @@ async function duplicateLocaleContent(
           type: 'error',
           timestamp: Date.now(),
         });
+        // Proceed to the next model if there's an error
         continue;
       }
     }
 
+    // Indicate that all updates have been attempted and we're verifying
     onProgress({
       message: 'Verifying content migration...',
       type: 'info',
       timestamp: Date.now(),
     });
 
+    // Wait a few seconds (simulating a verification or finalization delay)
     await new Promise((resolve) => setTimeout(resolve, 5000));
 
+    // Report completion of the migration
     onProgress({
       message: 'Migration completed successfully!',
       type: 'success',
@@ -194,28 +256,52 @@ async function duplicateLocaleContent(
   }
 }
 
-export default function ConfigScreen({ ctx }: Props) {
+/**
+ * The ConfigScreen component is the main UI entry point for the plugin's configuration screen.
+ * It allows users to select source and target locales for duplication, initiate the duplication,
+ * and track the progress of updates. This component uses DatoCMS's React UI library for the form
+ * and leverages contextual data (ctx) from the plugin SDK for environment details.
+ *
+ * @param ctx - DatoCMS context object passed to the component.
+ * @returns A React element rendering the plugin's configuration UI.
+ */
+export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
+  // Retrieve the list of locales from the site
   const currentSiteLocales = ctx.site.attributes.locales;
+
+  // Local state for the selected source and target locales
   const [sourceLocale, setSourceLocale] = useState<string>(
     currentSiteLocales[0]
   );
   const [targetLocale, setTargetLocale] = useState<string>(
     currentSiteLocales[1]
   );
+
+  // Flag indicating whether the duplication process is in progress
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Array of progress updates, displayed to the user
   const [progressUpdates, setProgressUpdates] = useState<ProgressUpdate[]>([]);
 
+  /**
+   * Handler function to update the progressUpdates state with new updates.
+   *
+   * @param update - A single progress update object containing message, type, and timestamp.
+   */
   const handleProgress = (update: ProgressUpdate) => {
     setProgressUpdates((prev) => [...prev, update]);
   };
 
+  // Render the main UI within a Canvas component
   return (
     <Canvas ctx={ctx}>
+      {/* Conditional form container, hidden when processing is underway */}
       <div
         className={`${styles.formContainer} ${
           isProcessing ? styles.hidden : ''
         }`}
       >
+        {/* Locale selection UI */}
         <div
           style={{
             display: 'flex',
@@ -274,6 +360,7 @@ export default function ConfigScreen({ ctx }: Props) {
           />
         </div>
 
+        {/* The main button to start the duplication process */}
         <Button
           fullWidth
           onClick={() =>
@@ -295,6 +382,7 @@ export default function ConfigScreen({ ctx }: Props) {
                 },
               })
               .then((result) => {
+                // Confirm if the user wants to proceed with duplication
                 if (result === 'duplicate') {
                   ctx
                     .openConfirm({
@@ -321,9 +409,11 @@ export default function ConfigScreen({ ctx }: Props) {
                       },
                     })
                     .then((result) => {
+                      // Confirm if the user wants to overwrite the target locale
                       if (result === 'overwrite') {
                         setIsProcessing(true);
                         setProgressUpdates([]);
+                        // Start the duplication process
                         duplicateLocaleContent(
                           ctx,
                           sourceLocale,
@@ -352,6 +442,7 @@ export default function ConfigScreen({ ctx }: Props) {
         </Button>
       </div>
 
+      {/* Conditionally render the progress view if processing is in progress */}
       {isProcessing && (
         <ProgressView
           updates={progressUpdates}
