@@ -1,3 +1,77 @@
 .inspector {
   margin-top: var(--spacing-l);
 }
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.fadeIn {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.slideIn {
+  animation: slideIn 0.3s ease-in-out;
+}
+
+.progressContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0 2rem 2rem 2rem;
+}
+
+.progressHeading {
+  text-align: center;
+  margin: 0;
+  margin-bottom: 1rem;
+}
+
+.updatesList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.updateItem {
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+.updateItem.info {
+  background-color: #e3f2fd;
+}
+
+.updateItem.success {
+  background-color: #e8f5e9;
+}
+
+.updateItem.error {
+  background-color: #ffebee;
+}
+
+.formContainer {
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+
+.formContainer.hidden {
+  display: none;
+}
