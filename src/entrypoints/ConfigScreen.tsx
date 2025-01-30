@@ -123,6 +123,7 @@ async function duplicateLocaleContent(
   // Build the CMA client with the current user's access token
   const client = buildClient({
     apiToken: ctx.currentUserAccessToken!,
+    environment: ctx.environment,
   });
 
   try {
