@@ -8,7 +8,9 @@ Duplicate the content of one DatoCMS locale into another. This can be useful whe
 ## Features
 
 - One-click duplication of all fields from a source locale to a target locale.
+- Selective duplication of specific content models.
 - Overwrites all fields in the target locale with the content from the source locale.
+- Detailed operation console showing progress and record IDs.
 
 ## Configuration
 
@@ -22,11 +24,15 @@ No special configuration steps are required. Once installed, open the plugin and
 1. In the **Plugins** section of your DatoCMS project, open **Locale Duplicate**.
 2. Choose the source locale (the locale that has the content you want to duplicate).
 3. Choose the target locale (the locale that will receive the copied content).
-4. Click **Duplicate locale content**.
-5. You will be prompted with two confirmation steps:
+4. Select which models you want to duplicate:
+   - By default, all models are selected
+   - Uncheck any models you don't want to include in the duplication process
+   - This allows for targeted updates of specific content types
+5. Click **Duplicate locale content**.
+6. You will be prompted with two confirmation steps:
    - Confirm that you truly want to duplicate the content.
    - Confirm that you understand the existing target locale content will be overwritten.
-6. Watch the progress. Once finished, you’ll see a success message.
+7. Watch the progress in the Operation Console. Once finished, you'll see a summary of the duplication process with details on successful and failed records.
 
 ## Common Use Cases
 
@@ -44,4 +50,11 @@ If you have a locale like `en-US` and want a similar locale like `en-UK`:
 1. Create `en-UK` in **Settings** → **Locales**.
 2. In the plugin, select `en-US` as the source and `en-UK` as the target.
 3. Duplicate the content.
-4. Review the new locale’s content and make any minor edits unique to that region.
+
+### Updating Specific Content Types
+
+If you've made major updates to certain models in one locale and want to propagate only those changes:
+
+1. Select your source and target locales.
+2. Uncheck all models except the ones you specifically want to update.
+3. Duplicate only the selected content models.
