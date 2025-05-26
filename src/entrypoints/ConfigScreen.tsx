@@ -5,7 +5,9 @@ import { buildClient } from '@datocms/cma-client-browser';
 
 interface FieldConfig {
   modelId: string;
+  modelLabel: string;
   fieldId: string;
+  fieldLabel: string;
 }
 
 interface ModelOption {
@@ -25,6 +27,7 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
   const [availableFields, setAvailableFields] = useState<FieldOption[]>([]);
   const [savedConfigs, setSavedConfigs] = useState<FieldConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingFields, setIsLoadingFields] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Load saved configurations and models on mount
@@ -67,9 +70,11 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
     const loadFields = async () => {
       if (!selectedModel) {
         setAvailableFields([]);
+        setIsLoadingFields(false);
         return;
       }
 
+      setIsLoadingFields(true);
       try {
         const client = buildClient({
           apiToken: ctx.currentUserAccessToken || '',
@@ -91,6 +96,8 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
       } catch (error) {
         console.error('Error loading fields:', error);
         ctx.notice(`Error loading fields: ${error}`);
+      } finally {
+        setIsLoadingFields(false);
       }
     };
 
@@ -116,7 +123,9 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
     // Add new configuration
     setSavedConfigs([...savedConfigs, {
       modelId: selectedModel.value,
-      fieldId: selectedField.value
+      modelLabel: selectedModel.label,
+      fieldId: selectedField.value,
+      fieldLabel: selectedField.label
     }]);
 
     // Reset selections
@@ -197,22 +206,41 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
                 />
               </div>
 
-              <div style={{ flex: 1 }}>
-                <SelectField
-                  name="field"
-                  id="field"
-                  label="Localized Field"
-                  hint="Select a localized field"
-                  value={selectedField}
-                  selectInputProps={{
-                    isDisabled: !selectedModel,
-                    isMulti: false,
-                    options: availableFields,
-                  }}
-                  onChange={(newValue) => {
-                    setSelectedField(newValue as FieldOption | null);
-                  }}
-                />
+              <div style={{ flex: 1, position: 'relative' }}>
+                <div style={{ 
+                  opacity: isLoadingFields ? 0.6 : 1,
+                  transition: 'opacity 0.2s ease',
+                  pointerEvents: isLoadingFields ? 'none' : 'auto'
+                }}>
+                  <SelectField
+                    name="field"
+                    id="field"
+                    label="Localized Field"
+                    hint={isLoadingFields ? "Loading fields..." : "Select a localized field"}
+                    value={selectedField}
+                    selectInputProps={{
+                      isDisabled: !selectedModel || isLoadingFields,
+                      isMulti: false,
+                      options: availableFields,
+                      isLoading: isLoadingFields,
+                      placeholder: isLoadingFields ? "Loading..." : "Select...",
+                    }}
+                    onChange={(newValue) => {
+                      setSelectedField(newValue as FieldOption | null);
+                    }}
+                  />
+                </div>
+                {isLoadingFields && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '50%',
+                    right: '10px',
+                    transform: 'translateY(-50%)',
+                    marginTop: '12px'
+                  }}>
+                    <Spinner size={16} />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -255,9 +283,9 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
                     }}
                   >
                     <div>
-                      <strong>{getModelName(config.modelId)}</strong>
+                      <strong>{config.modelLabel || getModelName(config.modelId)}</strong>
                       <span style={{ margin: '0 var(--spacing-xs)' }}>→</span>
-                      <span>Field ID: {config.fieldId}</span>
+                      <span>{config.fieldLabel || `Field ID: ${config.fieldId}`}</span>
                     </div>
                     <Button
                       buttonType="negative"
@@ -271,32 +299,52 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
               </div>
             )}
 
-            <div style={{ 
-              display: 'flex', 
-              gap: 'var(--spacing-m)',
-              marginTop: 'var(--spacing-l)'
-            }}>
-              <Button
-                fullWidth
-                buttonType="primary"
-                buttonSize="m"
-                onClick={handleSave}
-                disabled={isSaving}
-              >
-                {isSaving ? 'Saving...' : 'Save Configuration'}
-              </Button>
+            <Button
+              fullWidth
+              buttonType="primary"
+              buttonSize="m"
+              onClick={handleSave}
+              disabled={isSaving}
+              style={{ marginTop: 'var(--spacing-l)' }}
+            >
+              {isSaving ? 'Saving...' : 'Save Configuration'}
+            </Button>
+          </FieldGroup>
+        </Section>
 
-              <Button
-                fullWidth
-                buttonType="muted"
-                buttonSize="m"
-                onClick={() => {
-                  ctx.navigateTo(`/configuration/p/${ctx.plugin.id}/pages/massLocaleDuplication`);
-                }}
-              >
-                Go to Mass Locale Duplication
-              </Button>
+        <Section title="Mass Locale Duplication">
+          <FieldGroup>
+            <div style={{
+              backgroundColor: 'var(--light-bg-color)',
+              padding: 'var(--spacing-m)',
+              borderRadius: 'var(--border-radius)',
+              marginBottom: 'var(--spacing-m)'
+            }}>
+              <p style={{ 
+                margin: '0 0 var(--spacing-s) 0',
+                fontSize: 'var(--font-size-s)'
+              }}>
+                Need to duplicate content across all records in a model? Use the Mass Locale Duplication feature to copy all content from one locale to another in bulk. This is useful for setting up new locales or creating baseline translations.
+              </p>
+              <p style={{ 
+                margin: '0',
+                fontSize: 'var(--font-size-s)',
+                color: 'var(--light-body-color)'
+              }}>
+                <strong>Note:</strong> Mass duplication will overwrite all existing content in the target locale.
+              </p>
             </div>
+            
+            <Button
+              fullWidth
+              buttonType="muted"
+              buttonSize="m"
+              onClick={() => {
+                ctx.navigateTo(`/configuration/p/${ctx.plugin.id}/pages/massLocaleDuplication`);
+              }}
+            >
+              Go to Mass Locale Duplication
+            </Button>
           </FieldGroup>
         </Section>
       </Form>
