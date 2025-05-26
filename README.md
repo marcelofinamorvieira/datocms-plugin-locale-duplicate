@@ -62,10 +62,14 @@ No special configuration required. Access via Settings → Locale Duplicate.
 2. When editing records:
    - Look for the copy button on configured fields
    - Click the button to open the locale selection
-   - Choose source and target locales
    - Click "Copy" to transfer the field value
 
 ## Common Use Cases
+
+### Passing single field values across locales when editing a record:
+1. Open a record in the record editor
+2. Look for the copy button on configured fields
+3. Click "Copy" to transfer the field value
 
 ### Renaming a Locale
 
@@ -89,11 +93,3 @@ If you've made major updates to certain models in one locale and want to propaga
 1. Select your source and target locales.
 2. Uncheck all models except the ones you specifically want to update.
 3. Duplicate only the selected content models.
-
-### Selective Field Translation
-
-When translating content, you may want to copy certain fields that don't need translation:
-
-1. Configure fields like IDs, codes, or URLs to have copy buttons.
-2. While translating records, quickly copy non-translatable fields.
-3. Focus translation efforts only on fields that need localization.

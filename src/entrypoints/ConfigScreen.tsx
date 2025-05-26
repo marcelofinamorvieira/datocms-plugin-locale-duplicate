@@ -1,8 +1,16 @@
+/**
+ * Configuration screen for the Locale Duplicate plugin.
+ * Allows users to select which fields should display copy buttons
+ * in the record editing interface.
+ */
 import { RenderConfigScreenCtx } from 'datocms-plugin-sdk';
 import { Canvas, Button, SelectField, Form, FieldGroup, Section, Spinner } from 'datocms-react-ui';
 import { useState, useEffect } from 'react';
 import { buildClient } from '@datocms/cma-client-browser';
 
+/**
+ * Configuration entry for a field that should show copy buttons
+ */
 interface FieldConfig {
   modelId: string;
   modelLabel: string;
@@ -10,16 +18,26 @@ interface FieldConfig {
   fieldLabel: string;
 }
 
+/**
+ * Option format for model selection dropdown
+ */
 interface ModelOption {
   label: string;
   value: string;
 }
 
+/**
+ * Option format for field selection dropdown
+ */
 interface FieldOption {
   label: string;
   value: string;
 }
 
+/**
+ * Main configuration screen component.
+ * Manages field configurations and provides access to mass duplication feature.
+ */
 export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
   const [selectedModel, setSelectedModel] = useState<ModelOption | null>(null);
   const [selectedField, setSelectedField] = useState<FieldOption | null>(null);
@@ -31,7 +49,9 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
   const [isLoadingFields, setIsLoadingFields] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Load saved configurations and models on mount
+  /**
+   * Load saved configurations and fetch available models on component mount
+   */
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -41,13 +61,13 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
         setSavedConfigs(configArray);
         setOriginalConfigs(configArray);
 
-        // Initialize CMA client
+        // Initialize DatoCMS Content Management API client
         const client = buildClient({
           apiToken: ctx.currentUserAccessToken || '',
           environment: ctx.environment,
         });
 
-        // Fetch all models
+        // Fetch all models (excluding modular blocks)
         const models = await client.itemTypes.list();
         const modelOptions = models
           .filter(model => !model.modular_block)
@@ -68,7 +88,10 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
     loadData();
   }, [ctx]);
 
-  // Load fields when a model is selected
+  /**
+   * Load available fields when a model is selected.
+   * Only shows localized fields that aren't already configured.
+   */
   useEffect(() => {
     const loadFields = async () => {
       if (!selectedModel) {
@@ -111,6 +134,9 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
     loadFields();
   }, [selectedModel, savedConfigs, ctx]);
 
+  /**
+   * Add a new field configuration to the list
+   */
   const handleAddConfiguration = () => {
     if (!selectedModel || !selectedField) {
       ctx.notice('Please select both a model and a field');
@@ -140,11 +166,17 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
     setSelectedField(null);
   };
 
+  /**
+   * Remove a field configuration from the list
+   */
   const handleRemoveConfiguration = (index: number) => {
     const newConfigs = savedConfigs.filter((_, i) => i !== index);
     setSavedConfigs(newConfigs);
   };
 
+  /**
+   * Save all field configurations to the plugin parameters
+   */
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -163,7 +195,9 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
     }
   };
 
-  // Check if configurations have changed
+  /**
+   * Check if configurations have been modified since last save
+   */
   const hasConfigurationChanged = () => {
     if (savedConfigs.length !== originalConfigs.length) {
       return true;
@@ -177,7 +211,9 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
     });
   };
 
-  // Get model and field names for display
+  /**
+   * Get model name by ID for display purposes
+   */
   const getModelName = (modelId: string) => {
     const model = availableModels.find(m => m.value === modelId);
     return model?.label || modelId;
