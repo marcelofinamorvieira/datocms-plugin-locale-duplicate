@@ -3,7 +3,13 @@
 A DatoCMS plugin that provides two powerful features for managing multilingual content:
 
 1. **Mass Locale Duplication** - Bulk copy all content from one locale to another
+
+![88846](https://github.com/user-attachments/assets/3770f94d-4206-450b-bf0b-beebcce6cf44)
+
+
 2. **Field-Level Copying** - Copy individual field values between locales while editing records
+
+![39050](https://github.com/user-attachments/assets/f12b5e08-8c4b-499f-9ea2-6e2e3269d6d6)
 
 This can be useful when you need to:
 
