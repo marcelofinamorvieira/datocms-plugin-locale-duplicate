@@ -19,17 +19,26 @@ This is a DatoCMS plugin that duplicates content between locales. The plugin is 
 
 ### Key Components
 
-- **Entry Point**: `src/main.tsx` - Connects the DatoCMS Plugin SDK
-- **Main Component**: `src/entrypoints/ConfigScreen.tsx` - Contains all plugin logic in a single file (1859 lines)
+- **Entry Point**: `src/main.tsx` - Connects the DatoCMS Plugin SDK with three entrypoints
+- **Config Screen**: `src/entrypoints/ConfigScreen.tsx` - Field selection and configuration UI
+- **Settings Sidebar**: `src/entrypoints/SettingsAreaSidebar.tsx` - Mass locale duplication interface
+- **Field Extension**: `src/entrypoints/FieldExtension.tsx` - Copy buttons for individual fields
 - **Build Output**: `dist/index.html` - Single HTML file loaded by DatoCMS
 
 ### Plugin Functionality
 
-The plugin provides a UI to:
+The plugin provides two main features:
+
+**Mass Duplication (Settings Area)**:
 1. Select source and target locales
 2. Choose specific models to duplicate (with select all/none options)
 3. Display real-time progress during duplication
 4. Show comprehensive summary with success/failure statistics
+
+**Field-Level Copying (Record Editor)**:
+1. Configure which fields should have copy buttons
+2. Copy field content between locales while editing records
+3. Supports common field types (string, text, structured text, JSON, SEO, slug)
 
 ### DatoCMS Integration
 
@@ -39,36 +48,37 @@ The plugin provides a UI to:
 
 ## Development Notes
 
-- The entire plugin logic is contained in `ConfigScreen.tsx` - consider this file for any functionality changes
+- Plugin logic is split across three entrypoints: `ConfigScreen.tsx`, `SettingsAreaSidebar.tsx`, and `FieldExtension.tsx`
 - Uses inline styles and CSS modules for styling
 - No environment-specific configuration needed - API tokens are provided by DatoCMS at runtime
-- The plugin overwrites all content in the target locale - this is by design
+- The mass duplication feature overwrites all content in the target locale - this is by design
+- Field configurations are stored in plugin parameters and persisted across sessions
 
 ## Design Principles
 
 - For design principles always use datocms-react-ui and the principles detailed at https://www.datocms.com/docs/plugin-sdk/react-datocms-ui
 
-## Planned Feature Expansion
+## Feature Overview
 
-The plugin is expanding beyond mass locale duplication to include two distinct features:
+The plugin provides two distinct features for locale content management:
 
-### 1. Mass Locale Duplication (Current Feature)
+### 1. Mass Locale Duplication
 - Bulk duplicate content across all records in selected models from one locale to another
-- Accessible from the plugin's main config screen
+- Accessible from Settings > Locale Duplicate via `SettingsAreaSidebar.tsx`
 - Use case: Migrating content between locales or setting up similar locales
 
-### 2. Field-Level Copy Feature (Planned)
-- Allow users to configure specific fields from models in the config screen
-- These configured fields will have a copy button in the record editing interface
-- Users can copy field values between locales while editing individual records
+### 2. Field-Level Copy Feature
+- Copy buttons appear on configured fields in the record editing interface
+- Configure fields via the plugin's configuration screen (`ConfigScreen.tsx`)
+- Implemented via `FieldExtension.tsx` for supported field types:
+  - string, text, structured_text, json, seo, slug
 - Use case: Selective field copying during content editing workflow
 
-### Implementation Plan
-1. Refactor `ConfigScreen.tsx` to support feature selection/tabs
-2. Add field selection UI for configuring which fields should have copy buttons
-3. Implement a new entrypoint for the field widget that renders copy buttons
-4. Store field configuration in plugin parameters
-5. Both features will coexist in the same plugin but serve different workflows
+### Plugin Architecture
+- **ConfigScreen.tsx**: Field configuration UI for selecting which fields get copy buttons
+- **SettingsAreaSidebar.tsx**: Mass duplication interface for bulk operations
+- **FieldExtension.tsx**: Renders copy buttons on configured fields
+- Field configurations stored in plugin parameters and accessed via DatoCMS Plugin SDK
 
 ## Development Guidelines
 

@@ -3,7 +3,7 @@
   "description": "Duplicate the content from one locale to another",
   "homepage": "https://github.com/marcelofinamorvieira/datocms-plugin-locale-duplicate",
   "private": false,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "author": "Marcelo Finamor Vieira <marcelofinamorvieira@gmail.com>",
   "type": "module",
   "keywords": [
@@ -16,6 +16,14 @@
     "entryPoint": "dist/index.html",
     "permissions": [
       "currentUserAccessToken"
+    ],
+    "fieldExtensions": [
+      {
+        "id": "localeCopyButton",
+        "name": "Locale Copy Button",
+        "type": "addon",
+        "fieldTypes": ["string", "text", "structured_text", "json", "seo", "slug"]
+      }
     ]
   },
   "files": [
