@@ -87,9 +87,13 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
         // Fetch fields for the selected model
         const fields = await client.fields.list(selectedModel.value);
         
-        // Filter only localized fields
+        // Filter only localized fields and exclude already configured fields
+        const configuredFieldIds = savedConfigs
+          .filter(config => config.modelId === selectedModel.value)
+          .map(config => config.fieldId);
+        
         const fieldOptions = fields
-          .filter(field => field.localized)
+          .filter(field => field.localized && !configuredFieldIds.includes(field.id))
           .map(field => ({
             label: field.label,
             value: field.id
@@ -105,7 +109,7 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
     };
 
     loadFields();
-  }, [selectedModel, ctx]);
+  }, [selectedModel, savedConfigs, ctx]);
 
   const handleAddConfiguration = () => {
     if (!selectedModel || !selectedField) {
@@ -251,10 +255,8 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
                 {isLoadingFields && (
                   <div style={{
                     position: 'absolute',
-                    top: '50%',
-                    right: '10px',
-                    transform: 'translateY(-50%)',
-                    marginTop: '12px'
+                    top: '38px',
+                    right: '48px'
                   }}>
                     <Spinner size={16} />
                   </div>
