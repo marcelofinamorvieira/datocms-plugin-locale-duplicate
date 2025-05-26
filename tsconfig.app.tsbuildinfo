@@ -1,1 +1,1 @@
-{"root":["./src/main.tsx","./src/vite-env.d.ts","./src/entrypoints/configscreen.tsx","./src/utils/render.tsx"],"version":"5.7.3"}
+{"root":["./src/main.tsx","./src/vite-env.d.ts","./src/entrypoints/configscreen.tsx","./src/entrypoints/settingsareasidebar.tsx","./src/types/country-list.d.ts","./src/utils/render.tsx"],"version":"5.7.3"}

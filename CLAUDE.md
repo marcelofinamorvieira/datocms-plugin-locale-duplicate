@@ -69,3 +69,7 @@ The plugin is expanding beyond mass locale duplication to include two distinct f
 3. Implement a new entrypoint for the field widget that renders copy buttons
 4. Store field configuration in plugin parameters
 5. Both features will coexist in the same plugin but serve different workflows
+
+## Development Guidelines
+
+- Always build to test for errors
