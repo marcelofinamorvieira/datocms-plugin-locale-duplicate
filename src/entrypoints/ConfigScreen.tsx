@@ -26,6 +26,7 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
   const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
   const [availableFields, setAvailableFields] = useState<FieldOption[]>([]);
   const [savedConfigs, setSavedConfigs] = useState<FieldConfig[]>([]);
+  const [originalConfigs, setOriginalConfigs] = useState<FieldConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingFields, setIsLoadingFields] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -36,7 +37,9 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
       try {
         // Load saved configurations from plugin parameters
         const configs = ctx.plugin.attributes.parameters?.fieldConfigs;
-        setSavedConfigs(Array.isArray(configs) ? configs : []);
+        const configArray = Array.isArray(configs) ? configs : [];
+        setSavedConfigs(configArray);
+        setOriginalConfigs(configArray);
 
         // Initialize CMA client
         const client = buildClient({
@@ -146,6 +149,7 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
         fieldConfigs: savedConfigs
       });
       
+      setOriginalConfigs(savedConfigs);
       ctx.notice('Configuration saved successfully');
     } catch (error) {
       console.error('Error saving configuration:', error);
@@ -153,6 +157,20 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Check if configurations have changed
+  const hasConfigurationChanged = () => {
+    if (savedConfigs.length !== originalConfigs.length) {
+      return true;
+    }
+    
+    return savedConfigs.some((config, index) => {
+      const original = originalConfigs[index];
+      return !original || 
+        config.modelId !== original.modelId || 
+        config.fieldId !== original.fieldId;
+    });
   };
 
   // Get model and field names for display
@@ -304,7 +322,7 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
               buttonType="primary"
               buttonSize="m"
               onClick={handleSave}
-              disabled={isSaving}
+              disabled={isSaving || !hasConfigurationChanged()}
               style={{ marginTop: 'var(--spacing-l)' }}
             >
               {isSaving ? 'Saving...' : 'Save Configuration'}
