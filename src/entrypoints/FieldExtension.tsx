@@ -4,7 +4,10 @@
  */
 import { RenderFieldExtensionCtx } from "datocms-plugin-sdk";
 import { Canvas, Button } from "datocms-react-ui";
+import { useCallback } from 'react';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { isLocalizedField } from '../types';
+import { removeBlockItemIdsImmutable } from '../utils/fieldUtils';
 
 /**
  * Props for the FieldExtension component
@@ -13,31 +16,6 @@ interface FieldExtensionProps {
   ctx: RenderFieldExtensionCtx;
 }
 
-/**
- * Recursively removes 'id' fields from nested blocks and structured text.
- * This is necessary when copying content between locales to avoid
- * duplicate block IDs which would cause validation errors.
- */
-function removeBlockItemIds(value: unknown): unknown {
-  // Base case: primitive values or null
-  if (typeof value !== 'object' || value === null) {
-    return value;
-  }
-
-  // Recursively process arrays
-  if (Array.isArray(value)) {
-    return value.map(item => removeBlockItemIds(item));
-  }
-
-  // For objects, create a new object excluding 'id' fields
-  const result: Record<string, unknown> = {};
-  for (const [key, val] of Object.entries(value)) {
-    if (key !== 'id') {
-      result[key] = removeBlockItemIds(val);
-    }
-  }
-  return result;
-}
 
 /**
  * Renders copy buttons for localized fields based on the current locale.
@@ -60,24 +38,37 @@ export default function FieldExtension({ ctx }: FieldExtensionProps) {
   /**
    * Copy field value from main locale to all other locales
    */
-  const copyToAllLocales = async () => {
-    const mainLocaleValue = (ctx.formValues[ctx.field.attributes.api_key] as Record<string, unknown>)[mainLocale];
+  const copyToAllLocales = useCallback(async () => {
+    const fieldValue = ctx.formValues[ctx.field.attributes.api_key];
+    
+    if (!isLocalizedField(fieldValue)) {
+      ctx.notice("Field value is not localized");
+      return;
+    }
+    
+    const mainLocaleValue = fieldValue[mainLocale];
 
     for (const locale of availableLocales.slice(1)) {
-     
-      await ctx.setFieldValue(ctx.field.attributes.api_key + `.${locale}`, removeBlockItemIds(mainLocaleValue));
+      await ctx.setFieldValue(ctx.field.attributes.api_key + `.${locale}`, removeBlockItemIdsImmutable(mainLocaleValue));
     }
     ctx.notice("Value copied to all locales")
-  };
+  }, [ctx, mainLocale, availableLocales]);
 
   /**
    * Copy field value from main locale to current locale
    */
-  const copyFromMainLocale = async () => {
-    const mainLocaleValue = (ctx.formValues[ctx.field.attributes.api_key] as Record<string, unknown>)[mainLocale];
-    await ctx.setFieldValue(ctx.field.attributes.api_key + `.${ctx.locale}`, removeBlockItemIds(mainLocaleValue));
+  const copyFromMainLocale = useCallback(async () => {
+    const fieldValue = ctx.formValues[ctx.field.attributes.api_key];
+    
+    if (!isLocalizedField(fieldValue)) {
+      ctx.notice("Field value is not localized");
+      return;
+    }
+    
+    const mainLocaleValue = fieldValue[mainLocale];
+    await ctx.setFieldValue(ctx.field.attributes.api_key + `.${ctx.locale}`, removeBlockItemIdsImmutable(mainLocaleValue));
     ctx.notice(`Value copied from ${mainLocale}`)
-  };
+  }, [ctx, mainLocale]);
 
   return (
     <ErrorBoundary ctx={ctx}>

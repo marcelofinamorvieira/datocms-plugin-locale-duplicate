@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Section, Button } from 'datocms-react-ui';
 import type { ProgressUpdate } from '../ProgressView';
 import styles from './SummaryView.module.css';
@@ -47,20 +47,41 @@ export function SummaryView({
     logs: false
   });
 
-  const errorUpdates = progressUpdates.filter(update => update.type === 'error');
-  const successPercentage = duplicationStats.totalRecords > 0
-    ? Math.round((duplicationStats.successfulRecords / duplicationStats.totalRecords) * 100)
-    : 0;
-  const duration = duplicationStats.endTime - duplicationStats.startTime;
-  const durationMinutes = Math.floor(duration / 60000);
-  const durationSeconds = Math.floor((duration % 60000) / 1000);
+  // Memoize error updates filtering
+  const errorUpdates = useMemo(() => 
+    progressUpdates.filter(update => update.type === 'error'), 
+    [progressUpdates]
+  );
+  
+  // Memoize success percentage calculation
+  const successPercentage = useMemo(() => 
+    duplicationStats.totalRecords > 0
+      ? Math.round((duplicationStats.successfulRecords / duplicationStats.totalRecords) * 100)
+      : 0,
+    [duplicationStats.totalRecords, duplicationStats.successfulRecords]
+  );
+  
+  // Memoize duration calculations
+  const { durationMinutes, durationSeconds } = useMemo(() => {
+    const duration = duplicationStats.endTime - duplicationStats.startTime;
+    return {
+      durationMinutes: Math.floor(duration / 60000),
+      durationSeconds: Math.floor((duration % 60000) / 1000)
+    };
+  }, [duplicationStats.endTime, duplicationStats.startTime]);
+  
+  // Memoize model statistics entries
+  const modelStatsEntries = useMemo(() => 
+    Object.entries(duplicationStats.modelStats),
+    [duplicationStats.modelStats]
+  );
 
-  const toggleSection = (section: keyof ExpandedSections) => {
+  const toggleSection = useCallback((section: keyof ExpandedSections) => {
     setExpandedSections(prev => ({
       ...prev,
       [section]: !prev[section]
     }));
-  };
+  }, []);
 
   return (
     <div className={styles.summaryContainer}>
@@ -136,7 +157,7 @@ export function SummaryView({
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.entries(duplicationStats.modelStats).map(([modelId, stats]) => (
+                    {modelStatsEntries.map(([modelId, stats]) => (
                       <tr key={modelId}>
                         <td>{stats.name}</td>
                         <td className={styles.successText}>{stats.success}</td>

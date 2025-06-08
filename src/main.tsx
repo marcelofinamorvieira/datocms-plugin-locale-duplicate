@@ -11,6 +11,7 @@ import ConfigScreen from "./entrypoints/ConfigScreen";
 import SettingsAreaSidebar from "./entrypoints/SettingsAreaSidebar";
 import FieldExtension from "./entrypoints/FieldExtension";
 import { render } from "./utils/render";
+import { isFieldCopyConfigArray } from "./types";
 
 /**
  * Initialize the DatoCMS plugin with its configuration
@@ -58,16 +59,9 @@ connect({
 	 * based on the plugin's configuration settings
 	 */
 	overrideFieldExtensions(field: Field, ctx: OverrideFieldExtensionsCtx) {
-		// Configuration structure for field-level copy buttons
-		interface FieldConfig {
-			modelId: string;
-			modelLabel: string;
-			fieldId: string;
-			fieldLabel: string;
-		}
-		
-		// Retrieve field configurations from plugin parameters
-		const configs = ctx.plugin.attributes.parameters?.fieldConfigs as FieldConfig[] | undefined;
+		// Retrieve field configurations from plugin parameters with type safety
+		const paramConfigs = ctx.plugin.attributes.parameters?.fieldConfigs;
+		const configs = isFieldCopyConfigArray(paramConfigs) ? paramConfigs : undefined;
 		
 		// Exit early if no configurations exist
 		if (!configs || !Array.isArray(configs)) {

@@ -5,35 +5,15 @@
  */
 import { RenderConfigScreenCtx } from 'datocms-plugin-sdk';
 import { Canvas, Button, SelectField, Form, FieldGroup, Section, Spinner } from 'datocms-react-ui';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { buildClient } from '@datocms/cma-client-browser';
 import { ErrorBoundary } from '../components/ErrorBoundary';
-
-/**
- * Configuration entry for a field that should show copy buttons
- */
-interface FieldConfig {
-  modelId: string;
-  modelLabel: string;
-  fieldId: string;
-  fieldLabel: string;
-}
-
-/**
- * Option format for model selection dropdown
- */
-interface ModelOption {
-  label: string;
-  value: string;
-}
-
-/**
- * Option format for field selection dropdown
- */
-interface FieldOption {
-  label: string;
-  value: string;
-}
+import { 
+  FieldCopyConfig, 
+  ModelOption, 
+  FieldOption, 
+  getErrorMessage
+} from '../types';
 
 /**
  * Main configuration screen component.
@@ -44,8 +24,8 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
   const [selectedField, setSelectedField] = useState<FieldOption | null>(null);
   const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
   const [availableFields, setAvailableFields] = useState<FieldOption[]>([]);
-  const [savedConfigs, setSavedConfigs] = useState<FieldConfig[]>([]);
-  const [originalConfigs, setOriginalConfigs] = useState<FieldConfig[]>([]);
+  const [savedConfigs, setSavedConfigs] = useState<FieldCopyConfig[]>([]);
+  const [originalConfigs, setOriginalConfigs] = useState<FieldCopyConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingFields, setIsLoadingFields] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -81,7 +61,7 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
         setIsLoading(false);
       } catch (error) {
         console.error('Error loading data:', error);
-        ctx.notice(`Error loading data: ${error}`);
+        ctx.notice(`Error loading data: ${getErrorMessage(error)}`);
         setIsLoading(false);
       }
     };
@@ -126,7 +106,7 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
         setAvailableFields(fieldOptions);
       } catch (error) {
         console.error('Error loading fields:', error);
-        ctx.notice(`Error loading fields: ${error}`);
+        ctx.notice(`Error loading fields: ${getErrorMessage(error)}`);
       } finally {
         setIsLoadingFields(false);
       }
@@ -138,7 +118,7 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
   /**
    * Add a new field configuration to the list
    */
-  const handleAddConfiguration = () => {
+  const handleAddConfiguration = useCallback(() => {
     if (!selectedModel || !selectedField) {
       ctx.notice('Please select both a model and a field');
       return;
@@ -165,20 +145,20 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
     // Reset selections
     setSelectedModel(null);
     setSelectedField(null);
-  };
+  }, [selectedModel, selectedField, savedConfigs, ctx]);
 
   /**
    * Remove a field configuration from the list
    */
-  const handleRemoveConfiguration = (index: number) => {
+  const handleRemoveConfiguration = useCallback((index: number) => {
     const newConfigs = savedConfigs.filter((_, i) => i !== index);
     setSavedConfigs(newConfigs);
-  };
+  }, [savedConfigs]);
 
   /**
    * Save all field configurations to the plugin parameters
    */
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
       await ctx.updatePluginParameters({
@@ -190,16 +170,16 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
       ctx.notice('Configuration saved successfully');
     } catch (error) {
       console.error('Error saving configuration:', error);
-      ctx.notice(`Error saving configuration: ${error}`);
+      ctx.notice(`Error saving configuration: ${getErrorMessage(error)}`);
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [savedConfigs, ctx]);
 
   /**
    * Check if configurations have been modified since last save
    */
-  const hasConfigurationChanged = () => {
+  const hasConfigurationChanged = useMemo(() => {
     if (savedConfigs.length !== originalConfigs.length) {
       return true;
     }
@@ -210,16 +190,37 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
         config.modelId !== original.modelId || 
         config.fieldId !== original.fieldId;
     });
-  };
+  }, [savedConfigs, originalConfigs]);
 
   /**
    * Get model name by ID for display purposes
    */
-  const getModelName = (modelId: string) => {
+  const getModelName = useCallback((modelId: string) => {
     const model = availableModels.find(m => m.value === modelId);
     return model?.label || modelId;
-  };
+  }, [availableModels]);
 
+  /**
+   * Handle model selection change
+   */
+  const handleModelChange = useCallback((newValue: ModelOption | null) => {
+    setSelectedModel(newValue);
+    setSelectedField(null);
+  }, []);
+
+  /**
+   * Handle field selection change
+   */
+  const handleFieldChange = useCallback((newValue: FieldOption | null) => {
+    setSelectedField(newValue);
+  }, []);
+
+  /**
+   * Navigate to mass duplication page
+   */
+  const handleNavigateToMassDuplication = useCallback(() => {
+    ctx.navigateTo(`/configuration/p/${ctx.plugin.id}/pages/massLocaleDuplication`);
+  }, [ctx]);
 
   if (isLoading) {
     return (
@@ -259,10 +260,7 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
                     isMulti: false,
                     options: availableModels,
                   }}
-                  onChange={(newValue) => {
-                    setSelectedModel(newValue as ModelOption | null);
-                    setSelectedField(null);
-                  }}
+                  onChange={(newValue) => handleModelChange(newValue as ModelOption | null)}
                 />
               </div>
 
@@ -285,9 +283,7 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
                       isLoading: isLoadingFields,
                       placeholder: isLoadingFields ? "Loading..." : "Select...",
                     }}
-                    onChange={(newValue) => {
-                      setSelectedField(newValue as FieldOption | null);
-                    }}
+                    onChange={(newValue) => handleFieldChange(newValue as FieldOption | null)}
                   />
                 </div>
                 {isLoadingFields && (
@@ -362,7 +358,7 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
               buttonType="primary"
               buttonSize="m"
               onClick={handleSave}
-              disabled={isSaving || !hasConfigurationChanged()}
+              disabled={isSaving || !hasConfigurationChanged}
               style={{ marginTop: 'var(--spacing-l)' }}
             >
               {isSaving ? 'Saving...' : 'Save Configuration'}
@@ -397,9 +393,7 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
               fullWidth
               buttonType="muted"
               buttonSize="m"
-              onClick={() => {
-                ctx.navigateTo(`/configuration/p/${ctx.plugin.id}/pages/massLocaleDuplication`);
-              }}
+              onClick={handleNavigateToMassDuplication}
             >
               Go to Mass Locale Duplication
             </Button>

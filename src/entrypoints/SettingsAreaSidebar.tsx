@@ -14,7 +14,7 @@ import type { RenderPageCtx } from 'datocms-plugin-sdk';
 import { 
   Canvas
 } from 'datocms-react-ui';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ConfigurationForm } from '../components/ConfigurationForm/ConfigurationForm';
 import { ProgressView } from '../components/ProgressView/ProgressView';
@@ -22,17 +22,9 @@ import type { ProgressUpdate } from '../components/ProgressView/ProgressView';
 import { SummaryView } from '../components/SummaryView/SummaryView';
 import { useDuplicationStats } from '../hooks/useDuplicationStats';
 import { getLocaleLabel } from '../utils/localeHelpers';
-
-/**
- * Represents a mapping from locale strings to generic content.
- * Each key in this interface is a locale identifier (e.g., 'en', 'fr'),
- * and the value is the content in that locale.
- * 
- * @interface LocalizedField
- */
-interface LocalizedField {
-  [locale: string]: unknown;
-}
+import { getErrorMessage, LocalizedField, ModelOption } from '../types';
+import { formatErrorMessage } from '../utils/errorMessages';
+import { removeBlockItemIdsMutable } from '../utils/fieldUtils';
 
 /**
  * Describes a structure that maps field keys to their localized fields.
@@ -51,65 +43,7 @@ interface Updates {
 }
 
 
-/**
- * Interface representing a model option for the SelectField component
- */
-interface ModelOption {
-  label: string;
-  value: string;
-}
 
-/**
- * Recursively removes IDs from nested 'block' and 'item' objects.
- * This is necessary when duplicating structured content to prevent ID collisions.
- * When content is duplicated from one locale to another, we need to ensure that
- * any nested blocks or items get new IDs assigned by DatoCMS, rather than
- * attempting to reuse existing IDs which could cause conflicts.
- *
- * @param obj - The object or array in which block and item IDs might need to be removed
- * @returns The same structure but with block/item IDs removed
- */
-function removeBlockItemIds(obj: unknown): unknown {
-  // Handle arrays recursively
-  if (Array.isArray(obj)) {
-    // If it's an array, iterate through each element and process recursively
-    for (let i = 0; i < obj.length; i++) {
-      removeBlockItemIds(obj[i]);
-    }
-  } else if (obj && typeof obj === 'object') {
-    // Process objects that might contain block or item structures
-    const typedObj = obj as Record<string, unknown>;
-    
-    // Handle 'block' type objects which have nested 'item' objects with IDs
-    if (
-      typedObj.type === 'block' && 
-      typedObj.item && 
-      typeof typedObj.item === 'object' && 
-      typedObj.item !== null
-    ) {
-      const itemObj = typedObj.item as { id?: unknown };
-      if ('id' in itemObj) {
-        // Remove the ID by setting to undefined rather than using delete operator
-        itemObj.id = undefined;
-      }
-    }
-
-    // Handle 'item' type objects which have direct IDs
-    if (
-      typedObj.type === 'item' && 
-      'id' in typedObj
-    ) {
-      // Remove the ID by setting to undefined rather than using delete operator
-      (typedObj as { id?: unknown }).id = undefined;
-    }
-
-    // Process all properties of the object recursively
-    for (const key in typedObj) {
-      removeBlockItemIds(typedObj[key]);
-    }
-  }
-  return obj;
-}
 
 /**
  * Core function to duplicate locale content from one locale to another.
@@ -253,18 +187,18 @@ async function duplicateLocaleContent(
               if (
                 fieldValue &&
                 typeof fieldValue === 'object' &&
-                Object.keys(fieldValue as object).includes(sourceLocale)
+                !Array.isArray(fieldValue) &&
+                Object.keys(fieldValue).includes(sourceLocale)
               ) {
                 // Clone the localized field values
-                updates[fieldKey] = { ...(fieldValue as LocalizedField) };
+                const localizedField = fieldValue as Record<string, unknown>;
+                updates[fieldKey] = { ...localizedField };
 
                 // Step 6: Copy content from source locale to target locale
-                updates[fieldKey][targetLocale] = (
-                  fieldValue as LocalizedField
-                )[sourceLocale];
+                updates[fieldKey][targetLocale] = localizedField[sourceLocale];
 
                 // Step 7: Process structured content to remove IDs
-                updates = removeBlockItemIds(updates) as Updates;
+                updates = removeBlockItemIdsMutable(updates) as Updates;
               }
             }
 
@@ -294,8 +228,15 @@ async function duplicateLocaleContent(
                 totalRecordsProcessed++;
                 recordsInModel++;
                 const currentProgress = modelStartProgress + Math.round(((j + 1) / recordsToProcess.length) * (modelEndProgress - modelStartProgress));
+                const errorMessage = formatErrorMessage('RECORD_UPDATE_FAILED', {
+                  recordId: record.id,
+                  modelName: model.name,
+                  sourceLocale,
+                  targetLocale,
+                  errorDetails: 'Check if the original record is currently invalid and fix validation errors'
+                });
                 onProgress({
-                  message: 'Failed to update record: Check if the original record is currently invalid, and fix validation errors present',
+                  message: errorMessage,
                   type: 'error',
                   timestamp: Date.now(),
                   recordId: record.id,
@@ -312,8 +253,12 @@ async function duplicateLocaleContent(
           }
         }
       } catch (modelError) {
+        const errorMessage = formatErrorMessage('MODEL_PROCESSING_FAILED', {
+          modelName: model.name,
+          errorDetails: getErrorMessage(modelError)
+        });
         onProgress({
-          message: `Error processing model ${model.name}: ${modelError} (Check if the original record is currently invalid, and fix validation errors present)`,
+          message: errorMessage,
           type: 'error',
           timestamp: Date.now(),
           modelId: model.id,
@@ -351,8 +296,11 @@ async function duplicateLocaleContent(
           progress: 98,
         });
       } catch (publishError) {
+        const errorMessage = formatErrorMessage('PUBLISH_FAILED', {
+          errorDetails: 'Some records may remain in draft state'
+        });
         onProgress({
-          message: `Warning: Could not publish all records. Some records may remain in draft state.`,
+          message: errorMessage,
           type: 'error',
           timestamp: Date.now(),
           progress: 98,
@@ -371,7 +319,7 @@ async function duplicateLocaleContent(
   } catch (error) {
     // Handle any unexpected errors that weren't caught by more specific handlers
     onProgress({
-      message: `Error during migration: ${error} (Check if the original record is currently invalid, and fix validation errors present)`,
+      message: `Error during migration: ${getErrorMessage(error)} (Check if the original record is currently invalid, and fix validation errors present)`,
       type: 'error',
       timestamp: Date.now(),
     });
@@ -473,7 +421,7 @@ export default function SettingsAreaSidebar({ ctx }: { ctx: RenderPageCtx }) {
   /**
    * Updates statistics based on progress updates
    */
-  const updateStatistics = (update: ProgressUpdate) => {
+  const updateStatistics = useCallback((update: ProgressUpdate) => {
     if (update.modelId && update.modelName && update.recordId) {
       if (update.type === 'success') {
         addSuccess(update.modelId, update.modelName, update.recordId);
@@ -481,7 +429,7 @@ export default function SettingsAreaSidebar({ ctx }: { ctx: RenderPageCtx }) {
         addFailure(update.modelId, update.modelName, update.recordId);
       }
     }
-  };
+  }, [addSuccess, addFailure]);
 
   /**
    * Handler function to add new progress updates to the state.
@@ -489,17 +437,17 @@ export default function SettingsAreaSidebar({ ctx }: { ctx: RenderPageCtx }) {
    *
    * @param update - A progress update object with message, type, and timestamp
    */
-  const handleProgress = (update: ProgressUpdate) => {
+  const handleProgress = useCallback((update: ProgressUpdate) => {
     setProgressUpdates((prev) => [...prev, update]);
     
     // Update statistics
     updateStatistics(update);
-  };
+  }, [updateStatistics]);
 
   /**
    * Handles the abortion of the duplication process
    */
-  const handleAbortProcess = () => {
+  const handleAbortProcess = useCallback(() => {
     ctx.openConfirm({
       title: 'Abort Process',
       content: 'Are you sure you want to abort the duplication process? This will stop the operation but changes already made will remain.',
@@ -527,7 +475,7 @@ export default function SettingsAreaSidebar({ ctx }: { ctx: RenderPageCtx }) {
         });
       }
     });
-  };
+  }, [ctx, handleProgress]);
   
   /**
    * Handles the form submission for locale duplication
@@ -635,12 +583,12 @@ export default function SettingsAreaSidebar({ ctx }: { ctx: RenderPageCtx }) {
   /**
    * Handles resetting the form after summary view
    */
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setShowSummary(false);
     setIsProcessing(false);
     setProgressUpdates([]);
     resetStats();
-  };
+  }, [resetStats]);
   
   return (
     <ErrorBoundary ctx={ctx}>

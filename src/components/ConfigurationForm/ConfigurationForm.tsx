@@ -6,12 +6,9 @@ import {
   SwitchField, 
   Button 
 } from 'datocms-react-ui';
+import { useMemo } from 'react';
 import styles from './ConfigurationForm.module.css';
-
-interface ModelOption {
-  label: string;
-  value: string;
-}
+import { ModelOption } from '../../types';
 
 interface ConfigurationFormProps {
   sourceLocale: string;
@@ -46,6 +43,42 @@ export function ConfigurationForm({
   onPublishAfterDuplicationChange,
   onSubmit
 }: ConfigurationFormProps) {
+  // Memoize locale options for source locale
+  const sourceLocaleOptions = useMemo(() => 
+    currentSiteLocales.map((locale) => ({
+      label: getLocaleLabel(locale),
+      value: locale,
+    })),
+    [currentSiteLocales, getLocaleLabel]
+  );
+
+  // Memoize locale options for target locale (excluding source)
+  const targetLocaleOptions = useMemo(() => 
+    currentSiteLocales
+      .filter((l) => l !== sourceLocale)
+      .map((locale) => ({
+        label: getLocaleLabel(locale),
+        value: locale,
+      })),
+    [currentSiteLocales, sourceLocale, getLocaleLabel]
+  );
+
+  // Memoize source locale value
+  const sourceLocaleValue = useMemo(() => [
+    {
+      label: getLocaleLabel(sourceLocale),
+      value: sourceLocale,
+    },
+  ], [sourceLocale, getLocaleLabel]);
+
+  // Memoize target locale value
+  const targetLocaleValue = useMemo(() => [
+    {
+      label: getLocaleLabel(targetLocale),
+      value: targetLocale,
+    },
+  ], [targetLocale, getLocaleLabel]);
+
   return (
     <div className={styles.formWrapper}>
       <Form className={styles.formContainer}>
@@ -84,18 +117,10 @@ export function ConfigurationForm({
                   id="fromLocale"
                   label="Source Locale"
                   hint="Select the locale you want to copy content from"
-                  value={[
-                    {
-                      label: getLocaleLabel(sourceLocale),
-                      value: sourceLocale,
-                    },
-                  ]}
+                  value={sourceLocaleValue}
                   selectInputProps={{
                     isMulti: false,
-                    options: currentSiteLocales.map((locale) => ({
-                      label: getLocaleLabel(locale),
-                      value: locale,
-                    })),
+                    options: sourceLocaleOptions,
                   }}
                   onChange={(newValue) => {
                     const newSourceLocale = newValue?.value || sourceLocale;
@@ -110,20 +135,10 @@ export function ConfigurationForm({
                   id="toLocales"
                   label="Target Locale"
                   hint="Select the locale you want to copy content to"
-                  value={[
-                    {
-                      label: getLocaleLabel(targetLocale),
-                      value: targetLocale,
-                    },
-                  ]}
+                  value={targetLocaleValue}
                   selectInputProps={{
                     isMulti: false,
-                    options: currentSiteLocales
-                      .filter((l) => l !== sourceLocale)
-                      .map((locale) => ({
-                        label: getLocaleLabel(locale),
-                        value: locale,
-                      })),
+                    options: targetLocaleOptions,
                   }}
                   onChange={(newValue) => {
                     const newTargetLocale = newValue?.value || targetLocale;
