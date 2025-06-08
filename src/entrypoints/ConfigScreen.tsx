@@ -7,6 +7,7 @@ import { RenderConfigScreenCtx } from 'datocms-plugin-sdk';
 import { Canvas, Button, SelectField, Form, FieldGroup, Section, Spinner } from 'datocms-react-ui';
 import { useState, useEffect } from 'react';
 import { buildClient } from '@datocms/cma-client-browser';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 /**
  * Configuration entry for a field that should show copy buttons
@@ -236,7 +237,8 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
   }
 
   return (
-    <Canvas ctx={ctx}>
+    <ErrorBoundary ctx={ctx}>
+      <Canvas ctx={ctx}>
       <Form>
         <Section title="Field Copy Configuration">
           <FieldGroup>
@@ -405,5 +407,6 @@ export default function ConfigScreen({ ctx }: { ctx: RenderConfigScreenCtx }) {
         </Section>
       </Form>
     </Canvas>
+    </ErrorBoundary>
   );
 }

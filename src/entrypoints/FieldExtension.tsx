@@ -4,6 +4,7 @@
  */
 import { RenderFieldExtensionCtx } from "datocms-plugin-sdk";
 import { Canvas, Button } from "datocms-react-ui";
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 /**
  * Props for the FieldExtension component
@@ -62,7 +63,7 @@ export default function FieldExtension({ ctx }: FieldExtensionProps) {
   const copyToAllLocales = async () => {
     const mainLocaleValue = (ctx.formValues[ctx.field.attributes.api_key] as Record<string, unknown>)[mainLocale];
 
-    for (const locale of availableLocales.splice(1)) {
+    for (const locale of availableLocales.slice(1)) {
      
       await ctx.setFieldValue(ctx.field.attributes.api_key + `.${locale}`, removeBlockItemIds(mainLocaleValue));
     }
@@ -79,13 +80,15 @@ export default function FieldExtension({ ctx }: FieldExtensionProps) {
   };
 
   return (
-    <Canvas ctx={ctx}>
-      {isAtMainLocale && <Button onClick={copyToAllLocales} buttonType="muted" buttonSize="s">
-        Copy to all locales
-      </Button>}
-      {!isAtMainLocale && <Button onClick={copyFromMainLocale} buttonType="muted" buttonSize="s">
-        Copy from {mainLocale}
-      </Button>}
-    </Canvas>
+    <ErrorBoundary ctx={ctx}>
+      <Canvas ctx={ctx}>
+        {isAtMainLocale && <Button onClick={copyToAllLocales} buttonType="muted" buttonSize="s">
+          Copy to all locales
+        </Button>}
+        {!isAtMainLocale && <Button onClick={copyFromMainLocale} buttonType="muted" buttonSize="s">
+          Copy from {mainLocale}
+        </Button>}
+      </Canvas>
+    </ErrorBoundary>
   );
 }

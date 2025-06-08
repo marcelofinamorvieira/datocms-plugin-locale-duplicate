@@ -11,6 +11,7 @@ const root = createRoot(container!);
 
 /**
  * Renders a React component into the plugin's root container.
+ * Note: Error boundaries should be added at the component level to have access to ctx
  * 
  * @param component - The React component to render
  */
