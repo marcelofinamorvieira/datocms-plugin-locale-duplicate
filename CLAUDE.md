@@ -83,3 +83,13 @@ The plugin provides two distinct features for locale content management:
 ## Development Guidelines
 
 - Always build to test for errors
+
+  ## CRITICAL: DatoCMS Documentation Requirements
+
+  ❗ MANDATORY: Use the datocms-documentation-rag tool BEFORE:
+  - Analyzing any DatoCMS codebase
+  - Suggesting code improvements
+  - Writing new code
+  - Answering questions about DatoCMS functionality
+
+  This is NOT optional. Even for simple tasks, check if DatoCMS has specific guidance.
