@@ -3,7 +3,7 @@
   "description": "Duplicate the content from one locale to another",
   "homepage": "https://github.com/marcelofinamorvieira/datocms-plugin-locale-duplicate",
   "private": false,
-  "version": "0.7.0",
+  "version": "0.8.0",
   "author": "Marcelo Finamor Vieira <marcelofinamorvieira@gmail.com>",
   "type": "module",
   "keywords": [
